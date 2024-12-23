@@ -117,48 +117,50 @@ class UserRatingViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(ratings, many=True)
         return Response(serializer.data)
 
-
 class ProfileViewSet(viewsets.ModelViewSet):
     serializer_class = ProfileSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
-
-    @action(detail=True, methods=['post'])
-    def update_skills(self, request, pk=None):
-        profile = self.get_object()
-        skills = request.data.get('skills', [])
-
-        # Clear existing skills and add new ones
-        profile.skills.clear()
-        for skill_id in skills:
-            try:
-                skill = Skill.objects.get(id=skill_id)
-                profile.skills.add(skill)
-            except Skill.DoesNotExist:
-                pass
-
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
-
-    throttle_classes = [UserRateThrottle]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Profile.objects.none()
+        return Profile.objects.filter(user=self.request.user)
 
-        queryset = Profile.objects.select_related('user').prefetch_related('skills')
-        cache_key = f'profile_queryset_{self.request.user.id}'
+    def create(self, request, *args, **kwargs):
+        # Create profile with logged-in user
+        try:
+            # First check if profile already exists
+            profile = Profile.objects.filter(user=request.user).first()
+            if profile:
+                serializer = self.get_serializer(profile, data=request.data, partial=True)
+            else:
+                serializer = self.get_serializer(data=request.data)
 
-        cached_queryset = cache.get(cache_key)
-        if cached_queryset is None:
-            cached_queryset = queryset
-            cache.set(cache_key, cached_queryset, timeout=300)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        return cached_queryset
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
-    @method_decorator(cache_page(60 * 15))  # Cache for 15 minutes
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
-
+    def update(self, request, *args, **kwargs):
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]

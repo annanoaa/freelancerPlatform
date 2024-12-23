@@ -21,14 +21,38 @@ class SkillSerializer(serializers.ModelSerializer):
         model = Skill
         fields = '__all__'
 
+class UserInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_email_verified']
+        read_only_fields = ['id', 'is_email_verified']
 
 class ProfileSerializer(serializers.ModelSerializer):
-    skills = SkillSerializer(many=True, read_only=True)
-    user = UserSerializer(read_only=True)
-
+    user = UserInfoSerializer(read_only=True)
     class Meta:
         model = Profile
-        fields = '__all__'
+        fields = [
+            'user',
+            'bio',
+            'location',
+            'hourly_rate',
+            'experience_years',
+            'linkedin_url',
+            'github_url',
+            'portfolio_website',
+            'skills'
+        ]
+
+        extra_kwargs = {
+            'bio': {'required': False},
+            'location': {'required': False},
+            'hourly_rate': {'required': False},
+            'experience_years': {'required': False},
+            'linkedin_url': {'required': False},
+            'github_url': {'required': False},
+            'portfolio_website': {'required': False},
+            'skills': {'required': False},
+        }
 
 
 class UserRatingSerializer(serializers.ModelSerializer):

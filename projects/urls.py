@@ -4,7 +4,7 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'projects', views.ProjectViewSet, basename='project')
-router.register(r'bids', views.ProjectBidViewSet, basename='bid')
+router.register(r'bids', views.ProjectBidViewSet, basename='project-bid')
 router.register(r'files', views.ProjectFileViewSet, basename='project-file')
 router.register(r'milestones', views.MilestoneViewSet, basename='milestone')
 
