@@ -162,18 +162,4 @@ python manage.py runserver
 ## API Documentation
 The API documentation is available through Swagger UI at `/swagger/` endpoint when the server is running.
 
-## Testing
-The project includes comprehensive test coverage:
-```bash
-python manage.py test
-```
 
-## Contributing
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-This project is licensed under the MIT License - see the LICENSE file for details.
