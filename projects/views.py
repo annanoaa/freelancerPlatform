@@ -193,6 +193,9 @@ class ProjectBidViewSet(viewsets.ModelViewSet):
     permission_classes = [CanSubmitBid]
 
     def get_queryset(self):
+
+        if getattr(self, 'swagger_fake_view', False):
+            return ProjectBid.objects.none()
         return ProjectBid.objects.filter(
             Q(project__client=self.request.user) |
             Q(freelancer=self.request.user)
@@ -253,8 +256,6 @@ class ProjectBidViewSet(viewsets.ModelViewSet):
         bid.status = 'WITHDRAWN'
         bid.save()
         return Response({"detail": "Bid withdrawn successfully"})
-
-
 
 class ProjectFileViewSet(viewsets.ModelViewSet):
     """
