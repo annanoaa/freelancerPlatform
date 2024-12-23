@@ -161,5 +161,3 @@ python manage.py runserver
 
 ## API Documentation
 The API documentation is available through Swagger UI at `/swagger/` endpoint when the server is running.
-
-
