@@ -33,6 +33,11 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, username, password, **extra_fields)
 
 class User(AbstractUser):
+    """
+    Custom user model extending Django's AbstractUser.
+
+    Adds role-based authentication and email verification functionality.
+    """
     class Roles(models.TextChoices):
         FREELANCER = 'FR', _('Freelancer')
         CLIENT = 'CL', _('Client')
@@ -52,7 +57,7 @@ class User(AbstractUser):
             'The groups this user belongs to. A user will get all permissions '
             'granted to each of their groups.'
         ),
-        related_name='custom_users',  # Changed from custom_user_set
+        related_name='custom_users',
         related_query_name='custom_user'
     )
     user_permissions = models.ManyToManyField(
@@ -60,16 +65,25 @@ class User(AbstractUser):
         verbose_name=_('user permissions'),
         blank=True,
         help_text=_('Specific permissions for this user.'),
-        related_name='custom_users_permissions',  # Changed from custom_user_set
+        related_name='custom_users_permissions',
         related_query_name='custom_user'
     )
+
+    def get_role_display_name(self):
+        return self.get_role_display()
+
+    def can_bid_on_projects(self):
+        return self.role == self.Roles.FREELANCER
+
+    @property
+    def is_complete_profile(self):
+        return bool(self.profile.bio and self.profile.skills.exists())
 
     objects = CustomUserManager()
 
     EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email']
-
 
     class Meta:
             verbose_name = _('user')

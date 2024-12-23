@@ -81,7 +81,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         # Create the token
         refresh = self.get_token(authenticated_user)
-
         return {
             'refresh': str(refresh),
             'access': str(refresh.access_token)
