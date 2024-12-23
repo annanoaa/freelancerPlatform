@@ -193,61 +193,67 @@ class ProjectBidViewSet(viewsets.ModelViewSet):
     permission_classes = [CanSubmitBid]
 
     def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return ProjectBid.objects.none()
         return ProjectBid.objects.filter(
-            project__client=self.request.user
-        ) | ProjectBid.objects.filter(
-            freelancer=self.request.user
+            Q(project__client=self.request.user) |
+            Q(freelancer=self.request.user)
         )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if user has already bid on this project
+        # Get project from validated data
+        project = serializer.validated_data.get('project')
+
+        # Check if project exists and is open
+        if not project:
+            return Response(
+                {"detail": "Project not found"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if project.status != 'OPEN':
+            return Response(
+                {"detail": "Project is not open for bidding"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check for existing bid
         existing_bid = ProjectBid.objects.filter(
-            project_id=serializer.validated_data['project'].id,
+            project=project,
             freelancer=request.user
         ).exists()
 
         if existing_bid:
             return Response(
-                {"detail": "You have already submitted a bid for this project."},
-                status=status.HTTP_403_FORBIDDEN
+                {"detail": "You have already submitted a bid for this project"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            serializer.data,
-            status=status.HTTP_201_CREATED,
-            headers=headers
-        )
+        # Create new bid
+        serializer.save(freelancer=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def perform_create(self, serializer):
-        serializer.save(freelancer=self.request.user)
-
-    @swagger_auto_schema(
-        operation_summary="Withdraw Bid",
-        responses={
-            200: "Bid withdrawn successfully",
-            400: "Bad Request - Cannot withdraw bid",
-            403: "Forbidden - Not bid owner"
-        }
-    )
     @action(detail=True, methods=['post'])
     def withdraw_bid(self, request, pk=None):
         bid = self.get_object()
-        if bid.freelancer != request.user or bid.status != 'PENDING':
+        if bid.status != 'PENDING':
             return Response(
-                {'error': 'Cannot withdraw this bid'},
+                {"detail": "Only pending bids can be withdrawn"},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if bid.freelancer != request.user:
+            return Response(
+                {"detail": "You can only withdraw your own bids"},
+                status=status.HTTP_403_FORBIDDEN
             )
 
         bid.status = 'WITHDRAWN'
         bid.save()
-        return Response({'message': 'Bid withdrawn successfully'})
+        return Response({"detail": "Bid withdrawn successfully"})
+
 
 
 class ProjectFileViewSet(viewsets.ModelViewSet):
