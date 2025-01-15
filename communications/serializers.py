@@ -34,15 +34,37 @@ class ConversationSerializer(serializers.ModelSerializer):
         return obj.messages.exclude(read_by=user).count()
 
 class ConversationCreateSerializer(serializers.ModelSerializer):
-    participants = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=User.objects.all()
-    )
+    # participants = serializers.PrimaryKeyRelatedField(
+    #     many=True,
+    #     queryset=User.objects.all()
+    # )
+    # initial_message = serializers.CharField(write_only=True)
+    #
+    # class Meta:
+    #     model = Conversation
+    #     fields = ('participants', 'project', 'initial_message')
+
+    participants = serializers.PrimaryKeyRelatedField(many=True, queryset=User.objects.all())
     initial_message = serializers.CharField(write_only=True)
 
     class Meta:
         model = Conversation
         fields = ('participants', 'project', 'initial_message')
+
+    def create(self, validated_data):
+        initial_message = validated_data.pop('initial_message')
+        conversation = Conversation.objects.create(**validated_data)
+        conversation.participants.set(validated_data['participants'])
+
+        # Create the initial message
+        Message.objects.create(
+            conversation=conversation,
+            sender=self.context['request'].user,
+            content=initial_message
+        )
+
+        return conversation
+
 
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:

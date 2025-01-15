@@ -38,18 +38,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         try:
-            response = super().create(request, *args, **kwargs)
-            logger.info(
-                f"Project created: {response.data['id']} by user {request.user.id}"
-            )
-            return response
+            serializer = self.get_serializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(
+                    {"error": serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
-            logger.error(f"Project creation failed: {str(e)}")
             return Response(
-                {"error": "Failed to create project"},
+                {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Project.objects.none()
